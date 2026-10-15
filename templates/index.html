@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} | Energy Insights</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand-mark">W</div>
+  <div><div class="brand">WattWise <span>AI</span></div><div class="tagline">Energy insights for smarter everyday decisions</div></div>
+  <div class="top-right">DEMO · ML ANOMALY DETECTION</div>
+</header>
+<main class="wrap">
+  <section class="hero">
+    <div><p class="eyebrow">SMART ENERGY MONITORING</p><h1>See the pattern.<br><em>Spot the unusual.</em></h1>
+    <p class="intro">A small machine-learning prototype that reviews hourly energy readings and flags unusual consumption for human review.</p></div>
+    <div class="hero-card"><div class="orb">⚡</div><div class="hero-card-title">Usage intelligence</div><div class="muted">Pattern discovery · Outlier alerts · CSV workflow</div></div>
+  </section>
+  {% if error %}<div class="notice">Upload issue: {{ error }}. Showing the sample dataset instead.</div>{% endif %}
+  <section class="upload">
+    <div><h2>Analyze your readings</h2><p class="muted">Upload a CSV with columns: timestamp, hour, day_of_week, temperature_c, consumption_kwh.</p></div>
+    <form method="post" enctype="multipart/form-data"><input type="file" name="file" accept=".csv" required><button type="submit">Analyze CSV ↗</button></form>
+  </section>
+  <div class="source-line"><span class="dot"></span> {{ source }} <span class="separator">/</span> Synthetic data is used for the default demo</div>
+  <section class="metrics">
+    <article class="metric"><div class="metric-label">READINGS ANALYZED</div><div class="metric-value">{{ total }}</div><div class="metric-note">Rows in current dataset</div></article>
+    <article class="metric"><div class="metric-label">UNUSUAL READINGS</div><div class="metric-value">{{ anomalies }}</div><div class="metric-note">Flagged by Isolation Forest</div></article>
+    <article class="metric"><div class="metric-label">AVERAGE CONSUMPTION</div><div class="metric-value">{{ avg }} <small>kWh</small></div><div class="metric-note">Per hourly reading</div></article>
+    <article class="metric"><div class="metric-label">HIGHEST READING</div><div class="metric-value">{{ peak }} <small>kWh</small></div><div class="metric-note">In the current dataset</div></article>
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><p class="eyebrow">LAST 48 READINGS</p><h2>Consumption timeline</h2></div><span class="pill">Hourly · kWh</span></div>
+    <canvas id="energyChart" height="95"></canvas>
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><p class="eyebrow">MODEL OUTPUT</p><h2>Recent readings</h2></div><a class="download" href="{{ url_for('download') }}">Download scored sample ↓</a></div>
+    <div class="table-wrap"><table><thead><tr><th>Timestamp</th><th>Consumption</th><th>Temperature</th><th>ML status</th><th>Anomaly score</th></tr></thead><tbody>
+    {% for r in latest %}
+      <tr><td>{{ r.timestamp }}</td><td>{{ "%.3f"|format(r.consumption_kwh) }} kWh</td><td>{{ "%.1f"|format(r.temperature_c) }} °C</td><td>{% if r.anomaly %}<span class="status flagged">Review</span>{% else %}<span class="status normal">Typical</span>{% endif %}</td><td>{{ "%.4f"|format(r.anomaly_score) }}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+    <p class="footnote">“Review” means the model considers a reading unusual relative to this dataset. It does not prove a fault, waste, or safety issue.</p>
+  </section>
+  <section class="method">
+    <div><p class="eyebrow">HOW IT WORKS</p><h2>From readings to reviewable signals</h2></div>
+    <div class="steps"><div><b>01</b><strong>Collect</strong><p>Load timestamped energy readings and context features.</p></div><div><b>02</b><strong>Learn patterns</strong><p>Isolation Forest estimates which records are outliers.</p></div><div><b>03</b><strong>Review</strong><p>Inspect flagged records and investigate with real-world context.</p></div></div>
+  </section>
+  <footer><span>WattWise AI · Internship project prototype</span><span>SDG 7 · Affordable and Clean Energy | SDG 12 · Responsible Consumption</span></footer>
+</main>
+<script>
+const labels = {{ chart_labels|tojson }};
+const values = {{ chart_values|tojson }};
+const points = {{ anomaly_points|tojson }};
+new Chart(document.getElementById('energyChart'), {
+ type: 'line',
+ data: { labels, datasets: [
+  {label:'Consumption (kWh)', data:values, borderColor:'#4b7bec', backgroundColor:'rgba(75,123,236,.12)', fill:true, tension:.28, pointRadius:2, borderWidth:2},
+  {label:'Flagged readings', data:values.map((v,i)=>points.some(p=>p.x===i)?v:null), showLine:false, pointRadius:6, pointHoverRadius:8, pointBackgroundColor:'#e45858', pointBorderColor:'#fff', pointBorderWidth:2}
+ ]},
+ options:{responsive:true, plugins:{legend:{position:'bottom'}}, scales:{x:{ticks:{maxTicksLimit:8}},y:{beginAtZero:true,title:{display:true,text:'kWh'}}}}
+});
+</script>
+</body></html>
